@@ -62,14 +62,6 @@ $params['oauth_signature'] = $signature;
 // パラメータを変換する
 $header_params = http_build_query( $params2, '', ',');
 
-// リクエスト用のコンテキスト
-$context = [
-  'http' => [
-    'method' => $request_method,
-    'header' => ['Authorization: OAuth ' . $header_params],
-  ],
-];
-
 // パラメータがある場合、URLの末尾に追加
 if( $params ) {
   $request_url .= '?' . http_build_query( $params ) ;
@@ -82,25 +74,30 @@ curl_setopt( $curl, CURLOPT_URL , $request_url );
 // ヘッダーを設定
 curl_setopt( $curl, CURLOPT_HEADER, true );
 // GET
-curl_setopt( $curl, CURLOPT_CUSTOMREQUEST , $context['http']['method'] );
-// 中間証明書でエラーが起きる場合があるのでの、中間証明書の検証を行わない
+curl_setopt( $curl, CURLOPT_CUSTOMREQUEST , $request_method );
+// Winなどでは中間証明書でエラーが起きる場合があるので、中間証明書の検証を行わない
 curl_setopt( $curl, CURLOPT_SSL_VERIFYPEER , false );
 // curl_execの結果を文字列で返す
 curl_setopt( $curl, CURLOPT_RETURNTRANSFER , true );
 // ヘッダに署名を付与
-curl_setopt( $curl, CURLOPT_HTTPHEADER , $context['http']['header'] );
+curl_setopt( $curl, CURLOPT_HTTPHEADER , ['Authorization: OAuth ' . $header_params] );
 $response = curl_exec( $curl );
-$response_array = curl_getinfo( $curl );
+$info = curl_getinfo( $curl );
 curl_close( $curl ) ;
 
-$json = substr( $response, $response_array['header_size'] );
+if ( $response === false || $info['http_code'] != 200 ) {
+  echo 'error: failt to get contents\n';
+  exit;
+}
+
+$json = substr( $response, $info['header_size'] );
 
 // jsonをデコード
-$tweets  = json_decode($json);
-foreach($tweets as $tweet) {
-  $created_at_timestamp = strtotime($tweet->created_at);
-  echo "<<< " .date("Y年m月d日 H時i分s秒",$created_at_timestamp) . " >>>\n";
-  $full_text = htmlspecialchars($tweet->full_text, ENT_QUOTES, 'UTF-8', false);
+$tweets  = json_decode( $json );
+foreach( $tweets as $tweet ) {
+  $created_at_timestamp = strtotime( $tweet->created_at );
+  echo '<<< ' .date( 'Y年m月d日 H時i分s秒', $created_at_timestamp ) . " >>>\n";
+  $full_text = htmlspecialchars( $tweet->full_text, ENT_QUOTES, 'UTF-8', false );
   echo $full_text . "\n";
   echo "----------------------------\n";
 }

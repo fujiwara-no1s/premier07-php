@@ -5,6 +5,10 @@ $url = 'https://www.google.co.jp/search?q=%E6%B2%96%E7%B8%84%E3%80%80%E9%AB%98%E
 $searchPath = '//*/h3[@class="r"]/a';
 
 $html = file_get_contents($url);
+if ($html === false) {
+  echo "error: fail to get contents\n";
+  exit;
+}
 $html = mb_convert_encoding($html,"utf8","auto");
 
 $dom = new DOMDocument();
